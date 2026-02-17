@@ -21,13 +21,13 @@ public class Servidor {
 
     private Lock lock;
     private List<Tecnico> listaTecnicos;
-    private Queue<Ticket> listaTicketsSinResolver;
+    private Queue<Ticket> listaTickets;
     private int cantidadTickets;
 
     public Servidor() {
         this.lock = new ReentrantLock();
         this.listaTecnicos = new ArrayList<>();
-        this.listaTicketsSinResolver = new LinkedList<>(); // PENDIENTE | EN_PROCESO | RESUELTO
+        this.listaTickets = new LinkedList<>(); // PENDIENTE | EN_PROCESO | RESUELTO
         this.cantidadTickets = 0;
 
         this.iniciarServidor();
@@ -76,23 +76,46 @@ public class Servidor {
     public synchronized void registrarTicket(Ticket ticket) {
         this.cantidadTickets++;
         ticket.setId(this.cantidadTickets);
-        listaTicketsSinResolver.add(ticket);
+        listaTickets.add(ticket);
 
         System.out.println("Ticket creado con éxito");
         System.out.println(ticket);
     }
 
     public synchronized Ticket tomarTicket(String nombreTecnico) {
-        for (Ticket ticket : listaTicketsSinResolver) {
-            
+        Ticket ticket = buscarTicket("ALTA");
+
+        if (ticket == null) {
+            ticket = buscarTicket("MEDIA");
         }
-        
+
+        if (ticket == null) {
+            ticket = buscarTicket("BAJA");
+        }
+
+        if (ticket != null) {
+            ticket.setEstado("EN_PROCESO");
+            ticket.setTecnicoAsignado(nombreTecnico);
+            return ticket;
+        }
+
+        return null;
+    }
+
+    private Ticket buscarTicket(String prioridad) {
+        for (Ticket ticket : listaTickets) {
+            if (!ticket.getEstado().equals("RESUELTO") && ticket.getPrioridad().equalsIgnoreCase(prioridad)) {
+                return ticket;
+            }
+        }
+
         return null;
     }
 
     public void registrarTecnicoSimulado(int cantidad) {
         for (int i = 0; i < cantidad; i++) {
-            Tecnico tecnico = new Tecnico("Tecnico-" + (this.listaTecnicos.size() + 1));
+            String nombreTecnico = "Tecnico-" + (this.listaTecnicos.size() + 1);
+            Tecnico tecnico = new Tecnico(nombreTecnico, this);
             this.listaTecnicos.add(tecnico);
             tecnico.start();
         }
