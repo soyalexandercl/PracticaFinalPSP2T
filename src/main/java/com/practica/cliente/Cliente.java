@@ -1,51 +1,38 @@
 package com.practica.cliente;
 
 import com.practica.util.Ticket;
-
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.Socket;
 
 public class Cliente {
-
-    private Socket socket;
-    private ObjectInputStream entrada;
-    private ObjectOutputStream salida;
-
-    public Cliente() {
-
-    }
-
     public void crearTicket(Ticket ticket) {
         try {
-            this.socket = new Socket("localhost", 1900);
-            this.salida = new ObjectOutputStream(socket.getOutputStream());
-            this.entrada = new ObjectInputStream(socket.getInputStream());
+            Socket socket = new Socket("localhost", 1900);
+            ObjectOutputStream salida = new ObjectOutputStream(socket.getOutputStream());
+            ObjectInputStream entrada = new ObjectInputStream(socket.getInputStream());
 
             salida.writeObject(ticket);
-            System.out.println("Ticket enviado con éxito");
+            System.out.println("[CLIENTE] Ticket enviado.");
 
-            boolean finalizado = false;
-            while (!finalizado) {
+            boolean terminado = false;
+            while (!terminado) {
                 Object respuesta = entrada.readObject();
-
-                // Validamos el tipo de objeto recibido antes de hacer el cast
+                
                 if (respuesta instanceof String) {
-                    System.out.println("[SERVIDOR]: " + respuesta);
+                    System.out.println("[SERVIDOR] " + respuesta);
                 } else if (respuesta instanceof Ticket) {
                     Ticket ticketActualizado = (Ticket) respuesta;
-                    System.out.println("[NOTIFICACIÓN]: " + ticketActualizado);
-
+                    System.out.println("[NOTIFICACIÓN] " + ticketActualizado);
+                    
                     if (ticketActualizado.getEstado().equals("RESUELTO")) {
-                        finalizado = true;
+                        terminado = true;
                     }
                 }
             }
-
+            
             socket.close();
         } catch (IOException | ClassNotFoundException e) {
-            System.err.println("Error en la comunicación con el servidor: " + e.getMessage());
+            System.out.println("[INFO] Conexión finalizada por el servidor.");
         }
     }
 }

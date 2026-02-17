@@ -1,62 +1,34 @@
 package com.practica.servidor;
 
 import com.practica.tecnico.Tecnico;
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
 import com.practica.util.Ticket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
 public class Servidor {
 
     private ServerSocket serverSocket;
-
-    private Lock lock;
-    private List<Tecnico> listaTecnicos;
-    private Queue<Ticket> listaTickets;
-    private Map<Integer, ObjectOutputStream> clientes;
-    private int cantidadTickets;
+    private final List<Tecnico> listaTecnicos = new ArrayList<>();
+    private final List<Ticket> listaTickets = new ArrayList<>();
+    private final Map<Integer, ObjectOutputStream> listaClientes = new HashMap<>();
+    private int cantidadTickets = 0;
 
     public Servidor() {
-        this.lock = new ReentrantLock();
-        this.listaTecnicos = new ArrayList<>();
-        this.listaTickets = new LinkedList<>(); // PENDIENTE | EN_PROCESO | RESUELTO
-        this.clientes = new HashMap<>();
-        this.cantidadTickets = 0;
-
-        this.registrarTecnicoSimulado(2);
-        
-        this.iniciarServidor();
+        registrarTecnicoSimulado(2);
+        iniciarServidor();
     }
 
     public void iniciarServidor() {
         try {
             this.serverSocket = new ServerSocket(1900);
-            System.out.println("Servidor iniciado en puerto 1900");
-
+            System.out.println("[SERVIDOR] Servidor iniciado en el puerto 1900");
             while (true) {
-                try {
-                    Socket socket = serverSocket.accept();
-                    System.out.println("Cliente conectado: " + socket.getInetAddress());
-
-                    new Thread(() -> this.gestionarConexion(socket)).start();
-                } catch (IOException e) {
-                    System.err.println("Error aceptando conexión: " + e.getMessage());
-                }
+                Socket socket = serverSocket.accept();
+                new Thread(() -> gestionarConexion(socket)).start();
             }
-
         } catch (IOException e) {
-            System.err.println("No se pudo iniciar el servidor: " + e.getMessage());
+            System.err.println("[ERROR] " + e.getMessage());
         }
     }
 
@@ -64,14 +36,13 @@ public class Servidor {
         try {
             ObjectOutputStream salida = new ObjectOutputStream(socket.getOutputStream());
             ObjectInputStream entrada = new ObjectInputStream(socket.getInputStream());
+            Object peticion = entrada.readObject();
 
-            Ticket ticket = (Ticket) entrada.readObject();
-            this.registrarTicket(ticket, salida);
-            System.out.println("Nuevo ticket");
-
-            salida.writeObject("Ticket registrado con ID: " + ticket.getId());
+            if (peticion instanceof Ticket) {
+                registrarTicket((Ticket) peticion, salida);
+            }
         } catch (IOException | ClassNotFoundException e) {
-            System.err.println("Error en la comunicación con el cliente: " + e.getMessage());
+            System.err.println("[CONEXIÓN] Cliente desconectado");
         }
     }
 
@@ -79,18 +50,22 @@ public class Servidor {
         this.cantidadTickets++;
         ticket.setId(this.cantidadTickets);
         listaTickets.add(ticket);
+        listaClientes.put(ticket.getId(), salida);
 
-        System.out.println("Ticket creado con éxito");
-        System.out.println(ticket);
-        
-        clientes.put(ticket.getId(), salida);
-        
+        try {
+            System.out.println("Ticket #" + ticket.getId() + " registrado.");
+            salida.writeObject("Ticket #" + ticket.getId() + " registrado.");
+            salida.flush();
+        } catch (IOException e) {
+            listaClientes.remove(ticket.getId());
+        }
+
         notifyAll();
     }
 
     public synchronized Ticket tomarTicket(String nombreTecnico) throws InterruptedException {
         String[] prioridades = {"ALTA", "MEDIA", "BAJA"};
-
+        
         while (true) {
             Ticket ticket = null;
 
@@ -119,23 +94,21 @@ public class Servidor {
     }
 
     public void notificarCliente(Ticket ticket) {
-        ObjectOutputStream salida = clientes.get(ticket.getId());
-
+        ObjectOutputStream salida = listaClientes.get(ticket.getId());
         if (salida != null) {
             try {
                 salida.writeObject(ticket);
                 salida.flush();
-
                 if (ticket.getEstado().equals("RESUELTO")) {
-                    clientes.remove(ticket.getId());
+                    listaClientes.remove(ticket.getId());
                 }
             } catch (IOException e) {
-                clientes.remove(ticket.getId());
+                listaClientes.remove(ticket.getId());
             }
         }
     }
-    
-    public void registrarTecnicoSimulado(int cantidad) {
+
+    private void registrarTecnicoSimulado(int cantidad) {
         for (int i = 0; i < cantidad; i++) {
             String nombreTecnico = "Tecnico-" + (this.listaTecnicos.size() + 1);
             Tecnico tecnico = new Tecnico(nombreTecnico, this);
