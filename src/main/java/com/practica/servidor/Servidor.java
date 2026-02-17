@@ -12,17 +12,17 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Servidor {
 
-    private ServerSocket servidor;
-    private Socket conexion;
-    private DataOutputStream salida;
+    private ServerSocket serverSocket;
+    private Socket socket;
     private DataInputStream entrada;
+    private DataOutputStream salida;
 
     private Lock lock;
     private Queue<Ticket> colaTickets;
     private int cantidadTickets;
 
     public Servidor() throws IOException {
-        this.servidor = new ServerSocket(1900);
+        this.serverSocket = new ServerSocket(1900);
         this.lock = new ReentrantLock();
         this.colaTickets = new LinkedList<>();
         this.cantidadTickets = 0;
@@ -34,7 +34,7 @@ public class Servidor {
         System.out.println("Servidor iniciado");
 
         while (true) {
-            Socket conexion = servidor.accept();
+            Socket conexion = serverSocket.accept();
             System.out.println("Cliente conectado: " + conexion.getInetAddress());
         }
     }
@@ -45,6 +45,8 @@ public class Servidor {
             this.cantidadTickets++;
             ticket.setId(this.cantidadTickets);
             colaTickets.add(ticket);
+            
+            System.out.println("Ticked creado con exito");
         } finally {
             lock.unlock();
         }

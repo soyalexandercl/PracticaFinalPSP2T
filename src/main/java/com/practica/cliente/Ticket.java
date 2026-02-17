@@ -1,4 +1,4 @@
-package com.practica.servidor;
+package com.practica.cliente;
 
 public class Ticket {
     private int id;
