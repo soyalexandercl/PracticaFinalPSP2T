@@ -21,7 +21,7 @@ public class Tecnico extends Thread {
                 Ticket ticket = servidor.tomarTicket(this.nombre);
                 
                 System.out.println("[TÉCNICO " + nombre + "] Atendiendo Ticket #" + ticket.getId());
-                Thread.sleep(4000);
+                Thread.sleep(10000);
                 
                 ticket.setEstado("RESUELTO");
                 System.out.println("[TÉCNICO " + nombre + "] Ticket #" + ticket.getId() + " RESUELTO.");

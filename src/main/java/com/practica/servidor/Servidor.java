@@ -30,6 +30,8 @@ public class Servidor {
         this.listaTickets = new LinkedList<>(); // PENDIENTE | EN_PROCESO | RESUELTO
         this.cantidadTickets = 0;
 
+        this.registrarTecnicoSimulado(2);
+        
         this.iniciarServidor();
     }
 
@@ -80,6 +82,8 @@ public class Servidor {
 
         System.out.println("Ticket creado con éxito");
         System.out.println(ticket);
+        
+        notifyAll();
     }
 
     public synchronized Ticket tomarTicket(String nombreTecnico) throws InterruptedException {
