@@ -124,6 +124,7 @@ public class Servidor {
         if (salida != null) {
             try {
                 salida.writeObject(ticket);
+                salida.flush();
 
                 if (ticket.getEstado().equals("RESUELTO")) {
                     clientes.remove(ticket.getId());

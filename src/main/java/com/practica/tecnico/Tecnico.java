@@ -20,6 +20,8 @@ public class Tecnico extends Thread {
             while (true) {
                 Ticket ticket = servidor.tomarTicket(this.nombre);
                 
+                servidor.notificarCliente(ticket);
+                
                 System.out.println("[TÉCNICO " + nombre + "] Atendiendo Ticket #" + ticket.getId());
                 Thread.sleep(10000);
                 
