@@ -18,58 +18,76 @@ import java.util.List;
 public class Servidor {
 
     private ServerSocket serverSocket;
-    private Socket socket;
-    private ObjectInputStream entrada;
-    private ObjectOutputStream salida;
 
     private Lock lock;
     private List<Tecnico> listaTecnicos;
     private Queue<Ticket> listaTickets;
     private int cantidadTickets;
 
-    public Servidor() throws IOException, ClassNotFoundException {
+    public Servidor() {
         this.lock = new ReentrantLock();
         this.listaTecnicos = new ArrayList<>();
         this.listaTickets = new LinkedList<>();
         this.cantidadTickets = 0;
-        
+
         this.iniciarServidor();
     }
 
-    public void iniciarServidor() throws IOException, ClassNotFoundException {
-        this.serverSocket = new ServerSocket(1900);
-        System.out.println("Servidor iniciado");
+    public void iniciarServidor() {
+        try {
+            this.serverSocket = new ServerSocket(1900);
+            System.out.println("Servidor iniciado en puerto 1900");
 
-        while (true) {
-            Socket conexion = serverSocket.accept();
-            System.out.println("Cliente conectado: " + conexion.getInetAddress());
-            
-            new Thread();
-            
-            entrada = new ObjectInputStream(conexion.getInputStream());
+            while (true) {
+                try {
+                    Socket socket = serverSocket.accept();
+                    System.out.println("Cliente conectado: " + socket.getInetAddress());
+
+                    new Thread(() -> this.gestionarConexion(socket)).start();
+                } catch (IOException e) {
+                    System.err.println("Error aceptando conexión: " + e.getMessage());
+                }
+            }
+
+        } catch (IOException e) {
+            System.err.println("No se pudo iniciar el servidor: " + e.getMessage());
+        }
+    }
+
+    private void gestionarConexion(Socket socket) {
+        try {
+            ObjectOutputStream salida = new ObjectOutputStream(socket.getOutputStream());
+            ObjectInputStream entrada = new ObjectInputStream(socket.getInputStream());
+
             Ticket ticket = (Ticket) entrada.readObject();
+            this.registrarTicket(ticket);
             
-            this.registrarTicker(ticket);
-        }
-    }
-    
-    public void registrarTecnicoSimulado(int cantidad) {
-        for (int i = 0; i < cantidad; i++) {
-            Tecnico tecnico = new Tecnico("Tecnico-" + this.listaTecnicos.size() + 1);
-            tecnico.start();
+            salida.close();
+            entrada.close();
+            socket.close();
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Error en la comunicación con el cliente: " + e.getMessage());
         }
     }
 
-    public void registrarTicker(Ticket ticket) {
+    public void registrarTicket(Ticket ticket) {
         lock.lock();
         try {
             this.cantidadTickets++;
             ticket.setId(this.cantidadTickets);
             listaTickets.add(ticket);
-            
+
             System.out.println("Ticked creado con éxito");
         } finally {
             lock.unlock();
+        }
+    }
+    
+    public void registrarTecnicoSimulado(int cantidad) {
+        for (int i = 0; i < cantidad; i++) {
+            Tecnico tecnico = new Tecnico("Tecnico-" + (this.listaTecnicos.size() + 1));
+            this.listaTecnicos.add(tecnico);
+            tecnico.start();
         }
     }
 }
