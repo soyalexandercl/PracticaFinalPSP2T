@@ -21,13 +21,13 @@ public class Servidor {
 
     private Lock lock;
     private List<Tecnico> listaTecnicos;
-    private Queue<Ticket> listaTickets;
+    private Queue<Ticket> listaTicketsSinResolver;
     private int cantidadTickets;
 
     public Servidor() {
         this.lock = new ReentrantLock();
         this.listaTecnicos = new ArrayList<>();
-        this.listaTickets = new LinkedList<>();
+        this.listaTicketsSinResolver = new LinkedList<>(); // PENDIENTE | EN_PROCESO | RESUELTO
         this.cantidadTickets = 0;
 
         this.iniciarServidor();
@@ -62,9 +62,9 @@ public class Servidor {
             Ticket ticket = (Ticket) entrada.readObject();
             this.registrarTicket(ticket);
             System.out.println("Nuevo ticket");
-            
+
             salida.writeObject("Ticket registrado con ID: " + ticket.getId());
-            
+
             salida.close();
             entrada.close();
             socket.close();
@@ -73,19 +73,23 @@ public class Servidor {
         }
     }
 
-    public void registrarTicket(Ticket ticket) {
-        lock.lock();
-        try {
-            this.cantidadTickets++;
-            ticket.setId(this.cantidadTickets);
-            listaTickets.add(ticket);
+    public synchronized void registrarTicket(Ticket ticket) {
+        this.cantidadTickets++;
+        ticket.setId(this.cantidadTickets);
+        listaTicketsSinResolver.add(ticket);
 
-            System.out.println("Ticked creado con éxito");
-        } finally {
-            lock.unlock();
-        }
+        System.out.println("Ticket creado con éxito");
+        System.out.println(ticket);
     }
-    
+
+    public synchronized Ticket tomarTicket(String nombreTecnico) {
+        for (Ticket ticket : listaTicketsSinResolver) {
+            
+        }
+        
+        return null;
+    }
+
     public void registrarTecnicoSimulado(int cantidad) {
         for (int i = 0; i < cantidad; i++) {
             Tecnico tecnico = new Tecnico("Tecnico-" + (this.listaTecnicos.size() + 1));

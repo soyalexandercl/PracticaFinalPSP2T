@@ -71,6 +71,6 @@ public class Ticket implements Serializable {
 
     @Override
     public String toString() {
-        return "[#" + id + " | " + nombreCliente + " | " + prioridad + " | " + estado + "]";
+        return this.id + " | " + this.nombreCliente + " | " + this.prioridad + " | " + this.estado;
     }
 }
