@@ -9,8 +9,7 @@ public class Ticket {
     private String estado;
     private String tecnicoAsignado;
 
-    public Ticket(int id, String nombreCliente, String descripcion, String prioridad) {
-        this.id = id;
+    public Ticket(String nombreCliente, String descripcion, String prioridad) {
         this.nombreCliente = nombreCliente;
         this.descripcion = descripcion;
         this.prioridad = prioridad;
