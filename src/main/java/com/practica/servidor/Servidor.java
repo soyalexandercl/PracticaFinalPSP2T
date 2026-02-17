@@ -61,6 +61,9 @@ public class Servidor {
 
             Ticket ticket = (Ticket) entrada.readObject();
             this.registrarTicket(ticket);
+            System.out.println("Nuevo ticket");
+            
+            salida.writeObject("Ticket registrado con ID: " + ticket.getId());
             
             salida.close();
             entrada.close();

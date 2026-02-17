@@ -16,13 +16,17 @@ public class Cliente {
         
     }
     
-    public void crearTicket(Ticket ticket) throws IOException {
-        this.socket = new Socket("localhost", 1900);
-        this.entrada = new ObjectInputStream(socket.getInputStream());
-        this.salida = new ObjectOutputStream(socket.getOutputStream());
-        
-        salida.writeObject(ticket);
-        
-        System.out.println("Ticket enviado con éxito");
+    public void crearTicket(Ticket ticket) {
+        try {
+            this.socket = new Socket("localhost", 1900);
+            this.salida = new ObjectOutputStream(socket.getOutputStream());
+            this.entrada = new ObjectInputStream(socket.getInputStream());
+
+            salida.writeObject(ticket);
+            System.out.println("Ticket enviado con éxito");
+            System.out.println(entrada.readObject());
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Error en la comunicación con el servidor: " + e.getMessage());
+        }
     }
 }
