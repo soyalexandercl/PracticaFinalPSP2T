@@ -1,5 +1,6 @@
 package com.practica.servidor;
 
+import com.practica.tecnico.Tecnico;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -11,6 +12,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.practica.util.Ticket;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Servidor {
 
@@ -20,12 +23,14 @@ public class Servidor {
     private ObjectOutputStream salida;
 
     private Lock lock;
-    private Queue<Ticket> colaTickets;
+    private List<Tecnico> listaTecnicos;
+    private Queue<Ticket> listaTickets;
     private int cantidadTickets;
 
     public Servidor() throws IOException, ClassNotFoundException {
         this.lock = new ReentrantLock();
-        this.colaTickets = new LinkedList<>();
+        this.listaTecnicos = new ArrayList<>();
+        this.listaTickets = new LinkedList<>();
         this.cantidadTickets = 0;
         
         this.iniciarServidor();
@@ -47,13 +52,20 @@ public class Servidor {
             this.registrarTicker(ticket);
         }
     }
+    
+    public void registrarTecnicoSimulado(int cantidad) {
+        for (int i = 0; i < cantidad; i++) {
+            Tecnico tecnico = new Tecnico("Tecnico-" + this.listaTecnicos.size() + 1);
+            tecnico.start();
+        }
+    }
 
     public void registrarTicker(Ticket ticket) {
         lock.lock();
         try {
             this.cantidadTickets++;
             ticket.setId(this.cantidadTickets);
-            colaTickets.add(ticket);
+            listaTickets.add(ticket);
             
             System.out.println("Ticked creado con éxito");
         } finally {
