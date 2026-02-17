@@ -13,7 +13,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.practica.util.Ticket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Servidor {
 
@@ -22,12 +24,14 @@ public class Servidor {
     private Lock lock;
     private List<Tecnico> listaTecnicos;
     private Queue<Ticket> listaTickets;
+    private Map<Integer, ObjectOutputStream> clientes;
     private int cantidadTickets;
 
     public Servidor() {
         this.lock = new ReentrantLock();
         this.listaTecnicos = new ArrayList<>();
         this.listaTickets = new LinkedList<>(); // PENDIENTE | EN_PROCESO | RESUELTO
+        this.clientes = new HashMap<>();
         this.cantidadTickets = 0;
 
         this.registrarTecnicoSimulado(2);
@@ -62,7 +66,7 @@ public class Servidor {
             ObjectInputStream entrada = new ObjectInputStream(socket.getInputStream());
 
             Ticket ticket = (Ticket) entrada.readObject();
-            this.registrarTicket(ticket);
+            this.registrarTicket(ticket, salida);
             System.out.println("Nuevo ticket");
 
             salida.writeObject("Ticket registrado con ID: " + ticket.getId());
@@ -75,13 +79,15 @@ public class Servidor {
         }
     }
 
-    public synchronized void registrarTicket(Ticket ticket) {
+    public synchronized void registrarTicket(Ticket ticket, ObjectOutputStream salida) {
         this.cantidadTickets++;
         ticket.setId(this.cantidadTickets);
         listaTickets.add(ticket);
 
         System.out.println("Ticket creado con éxito");
         System.out.println(ticket);
+        
+        clientes.put(ticket.getId(), salida);
         
         notifyAll();
     }
@@ -116,6 +122,22 @@ public class Servidor {
         return null;
     }
 
+    public void notificarCliente(Ticket ticket) {
+        ObjectOutputStream salida = clientes.get(ticket.getId());
+
+        if (salida != null) {
+            try {
+                salida.writeObject(ticket);
+
+                if (ticket.getEstado().equals("RESUELTO")) {
+                    clientes.remove(ticket.getId());
+                }
+            } catch (IOException e) {
+                clientes.remove(ticket.getId());
+            }
+        }
+    }
+    
     public void registrarTecnicoSimulado(int cantidad) {
         for (int i = 0; i < cantidad; i++) {
             String nombreTecnico = "Tecnico-" + (this.listaTecnicos.size() + 1);
