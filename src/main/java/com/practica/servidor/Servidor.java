@@ -70,10 +70,6 @@ public class Servidor {
             System.out.println("Nuevo ticket");
 
             salida.writeObject("Ticket registrado con ID: " + ticket.getId());
-
-            salida.close();
-            entrada.close();
-            socket.close();
         } catch (IOException | ClassNotFoundException e) {
             System.err.println("Error en la comunicación con el cliente: " + e.getMessage());
         }

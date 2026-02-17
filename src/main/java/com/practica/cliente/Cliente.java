@@ -23,8 +23,21 @@ public class Cliente {
             this.entrada = new ObjectInputStream(socket.getInputStream());
 
             salida.writeObject(ticket);
+            
             System.out.println("Ticket enviado con éxito");
-            System.out.println(entrada.readObject());
+            
+            boolean finalizado = false;
+            while (!finalizado) {
+                Object respuesta = entrada.readObject();
+                System.out.println("[NOTIFICACIÓN]: " + respuesta);
+
+                Ticket ticketActualizado = (Ticket) respuesta;
+                if (ticketActualizado.getEstado().equals("RESUELTO")) {
+                    finalizado = true;
+                }
+            }
+            
+            socket.close();
         } catch (IOException | ClassNotFoundException e) {
             System.err.println("Error en la comunicación con el servidor: " + e.getMessage());
         }

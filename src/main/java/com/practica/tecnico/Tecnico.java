@@ -24,6 +24,9 @@ public class Tecnico extends Thread {
                 Thread.sleep(10000);
                 
                 ticket.setEstado("RESUELTO");
+                
+                servidor.notificarCliente(ticket);
+                
                 System.out.println("[TÉCNICO " + nombre + "] Ticket #" + ticket.getId() + " RESUELTO.");
             }
         } catch (InterruptedException e) {
