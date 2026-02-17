@@ -82,29 +82,29 @@ public class Servidor {
         System.out.println(ticket);
     }
 
-    public synchronized Ticket tomarTicket(String nombreTecnico) {
-        Ticket ticket = buscarTicket("ALTA");
+    public synchronized Ticket tomarTicket(String nombreTecnico) throws InterruptedException {
+        String[] prioridades = {"ALTA", "MEDIA", "BAJA"};
 
-        if (ticket == null) {
-            ticket = buscarTicket("MEDIA");
+        while (true) {
+            Ticket ticket = null;
+
+            for (int i = 0; i < prioridades.length && ticket == null; i++) {
+                ticket = buscarTicket(prioridades[i]);
+            }
+
+            if (ticket != null) {
+                ticket.setEstado("EN_PROCESO");
+                ticket.setTecnicoAsignado(nombreTecnico);
+                return ticket;
+            }
+
+            wait();
         }
-
-        if (ticket == null) {
-            ticket = buscarTicket("BAJA");
-        }
-
-        if (ticket != null) {
-            ticket.setEstado("EN_PROCESO");
-            ticket.setTecnicoAsignado(nombreTecnico);
-            return ticket;
-        }
-
-        return null;
     }
 
     private Ticket buscarTicket(String prioridad) {
         for (Ticket ticket : listaTickets) {
-            if (!ticket.getEstado().equals("RESUELTO") && ticket.getPrioridad().equalsIgnoreCase(prioridad)) {
+            if (ticket.getEstado().equals("PENDIENTE") && ticket.getPrioridad().equalsIgnoreCase(prioridad)) {
                 return ticket;
             }
         }
