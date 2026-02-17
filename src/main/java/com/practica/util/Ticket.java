@@ -1,6 +1,8 @@
-package com.practica.cliente;
+package com.practica.util;
 
-public class Ticket {
+import java.io.Serializable;
+
+public class Ticket implements Serializable {
     private int id;
     private String nombreCliente;
     private String descripcion;
@@ -13,7 +15,7 @@ public class Ticket {
         this.descripcion = descripcion;
         this.prioridad = prioridad;
         this.estado = "PENDIENTE";
-        this.tecnicoAsignado = "Sin asignar";
+        this.tecnicoAsignado = "";
     }
 
     public int getId() {
