@@ -3,6 +3,9 @@ package com.practica.util;
 import java.io.Serializable;
 
 public class Ticket implements Serializable {
+
+    // private static final long serialVersionUID = 1L;
+
     private int id;
     private String nombreCliente;
     private String descripcion;
@@ -64,5 +67,10 @@ public class Ticket implements Serializable {
 
     public void setTecnicoAsignado(String tecnicoAsignado) {
         this.tecnicoAsignado = tecnicoAsignado;
+    }
+
+    @Override
+    public String toString() {
+        return "[#" + id + " | " + nombreCliente + " | " + prioridad + " | " + estado + "]";
     }
 }

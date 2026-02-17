@@ -39,6 +39,8 @@ public class Servidor {
             Socket conexion = serverSocket.accept();
             System.out.println("Cliente conectado: " + conexion.getInetAddress());
             
+            new Thread();
+            
             entrada = new ObjectInputStream(conexion.getInputStream());
             Ticket ticket = (Ticket) entrada.readObject();
             
