@@ -18,17 +18,15 @@ public class Tecnico extends Thread {
             while (true) {
                 Ticket ticket = servidor.tomarTicket(this.nombre);
                 servidor.notificarCliente(ticket);
-                System.out.println("[TÉCNICO] Ticked: #" + ticket.getId() + " tomado");
                 
                 Thread.sleep(5000); // Tiempo de trabajo
                 
                 ticket.setEstado("RESUELTO");
-                System.out.println("[TÉCNICO] Ticked: #" + ticket.getId() + " resuelto");
                 
                 servidor.notificarCliente(ticket);
             }
         } catch (InterruptedException e) {
-            System.err.println("[HILO] " + nombre + " detenido");
+            System.out.println(e.getMessage());
         }
     }
 }

@@ -12,17 +12,14 @@ public class Cliente {
             ObjectInputStream entrada = new ObjectInputStream(socket.getInputStream());
 
             salida.writeObject(ticket);
-            System.out.println("[CLIENTE] Ticket enviado.");
-
+            
             boolean terminado = false;
             while (!terminado) {
                 Object respuesta = entrada.readObject();
                 
                 if (respuesta instanceof String) {
-                    System.out.println("[SERVIDOR] " + respuesta);
                 } else if (respuesta instanceof Ticket) {
                     Ticket ticketActualizado = (Ticket) respuesta;
-                    System.out.println("[NOTIFICACIÓN] " + ticketActualizado);
                     
                     if (ticketActualizado.getEstado().equals("RESUELTO")) {
                         terminado = true;
@@ -32,7 +29,7 @@ public class Cliente {
             
             socket.close();
         } catch (IOException | ClassNotFoundException e) {
-            System.out.println("[INFO] Conexión finalizada por el servidor.");
+            System.out.println(e.getMessage());
         }
     }
 }

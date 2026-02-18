@@ -1,8 +1,11 @@
 package com.practica.servidor;
 
+import javax.swing.SwingUtilities;
+
 public class Main {
 
     public static void main(String[] args) {
-        new Servidor();
+        
+            new Servidor();
     }
 }
