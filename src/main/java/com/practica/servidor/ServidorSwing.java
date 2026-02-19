@@ -20,17 +20,18 @@ import java.util.stream.Collectors;
  *   - PanelEstadoSistema   → Estadísticas en tiempo real
  *   - PanelTablaTickets    → Tabla de tickets
  *   - PanelAcciones        → Botones y filtros
- *   - VentanaPrincipal     → Ensamblado general con refresco automático
+ *   - VentanaPrincipal     → Ensamblado general
  *
- * Usa directamente: com.practica.util.Ticket, com.practica.servidor.Servidor,
- * com.practica.tecnico.Tecnico (requiere getNombre(), ver Tecnico.java).
+ * Actualización de la UI: un Timer ligero compara servidor.getContadorCambios()
+ * cada 200ms. Solo llama a refrescar() si el contador cambió, lo que ocurre
+ * únicamente cuando un hilo de Tecnico modifica el estado de un ticket.
  */
 public class ServidorSwing {
 
     public static final Font FUENTE_GLOBAL = new Font("SansSerif", Font.PLAIN, 13);
 
-    public static final String ESTADO_TODOS      = "Todos";
-    public static final String PRIORIDAD_TODAS   = "Todas";
+    public static final String ESTADO_TODOS    = "Todos";
+    public static final String PRIORIDAD_TODAS = "Todas";
 
     public static final String[] PRIORIDADES        = {"ALTA", "MEDIA", "BAJA"};
     public static final String[] OPCIONES_ESTADO    = {ESTADO_TODOS, "PENDIENTE", "EN_PROCESO", "RESUELTO"};
@@ -46,7 +47,7 @@ public class ServidorSwing {
     }
 
     // ══════════════════════════════════════════════════════════════
-    // MODELO DE TABLA  —  usa com.practica.util.Ticket directamente
+    // MODELO DE TABLA
     // ══════════════════════════════════════════════════════════════
 
     static class ModeloTablaTickets extends AbstractTableModel {
@@ -68,17 +69,10 @@ public class ServidorSwing {
             return listaTickets.get(fila);
         }
 
-        @Override
-        public int getRowCount() { return listaTickets.size(); }
-
-        @Override
-        public int getColumnCount() { return COLUMNAS.length; }
-
-        @Override
-        public String getColumnName(int columna) { return COLUMNAS[columna]; }
-
-        @Override
-        public boolean isCellEditable(int fila, int columna) { return false; }
+        @Override public int     getRowCount()                { return listaTickets.size(); }
+        @Override public int     getColumnCount()             { return COLUMNAS.length; }
+        @Override public String  getColumnName(int columna)   { return COLUMNAS[columna]; }
+        @Override public boolean isCellEditable(int f, int c) { return false; }
 
         @Override
         public Object getValueAt(int fila, int columna) {
@@ -96,8 +90,6 @@ public class ServidorSwing {
 
     // ══════════════════════════════════════════════════════════════
     // PANEL: SIMULAR CLIENTE
-    // Crea un Ticket real y lo registra en el Servidor directamente
-    // sin pasar por socket de red, usando registrarTicketDirecto()
     // ══════════════════════════════════════════════════════════════
 
     static class PanelSimularCliente extends JPanel {
@@ -180,11 +172,9 @@ public class ServidorSwing {
                     return;
                 }
 
-                // Ticket(String nombreCliente, String descripcion, String prioridad)
                 String prioridad   = (String) comboPrioridad.getSelectedItem();
                 Ticket nuevoTicket = new Ticket(nombreCliente, descripcion, prioridad);
 
-                // registrarTicketDirecto existe en Servidor.java
                 servidor.registrarTicketDirecto(nuevoTicket);
 
                 JOptionPane.showMessageDialog(this,
@@ -208,7 +198,6 @@ public class ServidorSwing {
 
     // ══════════════════════════════════════════════════════════════
     // PANEL: ESTADO DEL SISTEMA
-    // Calcula contadores filtrando sobre servidor.getListaTickets()
     // ══════════════════════════════════════════════════════════════
 
     static class PanelEstadoSistema extends JPanel {
@@ -244,18 +233,14 @@ public class ServidorSwing {
         public void actualizar() {
             List<Ticket> listaTickets = servidor.getListaTickets();
 
-            long pendientes = listaTickets.stream()
-                .filter(t -> "PENDIENTE".equals(t.getEstado())).count();
-            long enProceso = listaTickets.stream()
-                .filter(t -> "EN_PROCESO".equals(t.getEstado())).count();
-            long resueltos = listaTickets.stream()
-                .filter(t -> "RESUELTO".equals(t.getEstado())).count();
-            int tecnicosActivos = servidor.getListaTecnicos().size();
+            long pendientes = listaTickets.stream().filter(t -> "PENDIENTE".equals(t.getEstado())).count();
+            long enProceso  = listaTickets.stream().filter(t -> "EN_PROCESO".equals(t.getEstado())).count();
+            long resueltos  = listaTickets.stream().filter(t -> "RESUELTO".equals(t.getEstado())).count();
 
-            etiquetaPendientes.setText("Pendientes: "       + pendientes);
-            etiquetaEnProceso.setText("En proceso: "        + enProceso);
-            etiquetaResueltos.setText("Resueltos: "         + resueltos);
-            etiquetaTecnicos.setText("Técnicos activos: "   + tecnicosActivos);
+            etiquetaPendientes.setText("Pendientes: "      + pendientes);
+            etiquetaEnProceso.setText("En proceso: "       + enProceso);
+            etiquetaResueltos.setText("Resueltos: "        + resueltos);
+            etiquetaTecnicos.setText("Técnicos activos: "  + servidor.getListaTecnicos().size());
         }
     }
 
@@ -269,7 +254,6 @@ public class ServidorSwing {
         private ModeloTablaTickets modeloTabla;
 
         public PanelTablaTickets(Servidor servidor) {
-            // Arranca con la lista actual del servidor
             modeloTabla  = new ModeloTablaTickets(servidor.getListaTickets());
             tablaTickets = new JTable(modeloTabla);
 
@@ -292,13 +276,8 @@ public class ServidorSwing {
         }
 
         public void actualizarTabla(List<Ticket> listaTickets) {
-            // Guardamos la fila seleccionada antes de refrescar
-            // para que el Timer no borre la selección del usuario
             int filaSeleccionada = tablaTickets.getSelectedRow();
-
             modeloTabla.refrescar(listaTickets);
-
-            // Restauramos la selección si la fila sigue existiendo
             if (filaSeleccionada >= 0 && filaSeleccionada < tablaTickets.getRowCount()) {
                 tablaTickets.setRowSelectionInterval(filaSeleccionada, filaSeleccionada);
             }
@@ -327,7 +306,6 @@ public class ServidorSwing {
 
     static class PanelAcciones extends JPanel {
 
-        private JButton botonActualizar;
         private JButton botonAsignar;
         private JButton botonSimularTecnico;
         private JButton botonResolver;
@@ -346,7 +324,6 @@ public class ServidorSwing {
             this.panelTablaTickets  = panelTablaTickets;
             this.panelEstadoSistema = panelEstadoSistema;
 
-            botonActualizar     = new JButton("Actualizar");
             botonAsignar        = new JButton("Asignar");
             botonSimularTecnico = new JButton("Simular Técnico");
             botonResolver       = new JButton("Resolver");
@@ -355,8 +332,7 @@ public class ServidorSwing {
             comboFiltroEstado    = new JComboBox<>(OPCIONES_ESTADO);
             comboFiltroPrioridad = new JComboBox<>(OPCIONES_PRIORIDAD);
 
-            aplicarFuenteGlobal(botonActualizar, botonAsignar, botonSimularTecnico,
-                                botonResolver, botonVerDetalle,
+            aplicarFuenteGlobal(botonAsignar, botonSimularTecnico, botonResolver, botonVerDetalle,
                                 comboFiltroEstado, comboFiltroPrioridad);
 
             construirLayout();
@@ -368,7 +344,6 @@ public class ServidorSwing {
             setLayout(new BorderLayout(0, 4));
 
             JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-            panelBotones.add(botonActualizar);
             panelBotones.add(botonAsignar);
             panelBotones.add(botonSimularTecnico);
             panelBotones.add(botonResolver);
@@ -389,15 +364,11 @@ public class ServidorSwing {
         }
 
         private void configurarEventos() {
-            botonActualizar.addActionListener(e -> refrescar());
             comboFiltroEstado.addActionListener(e -> refrescar());
             comboFiltroPrioridad.addActionListener(e -> refrescar());
 
-            // Crea un nuevo Tecnico con hilo propio y lo agrega al servidor
-            // Llama a registrarTecnicoSimulado(int) que ya existe en Servidor.java
             botonSimularTecnico.addActionListener(e -> {
                 servidor.registrarTecnicoSimulado(1);
-                refrescar();
                 int totalTecnicos = servidor.getListaTecnicos().size();
                 JOptionPane.showMessageDialog(this,
                     "Nuevo técnico creado: Tecnico-" + totalTecnicos
@@ -405,7 +376,6 @@ public class ServidorSwing {
                     "Técnico Simulado", JOptionPane.INFORMATION_MESSAGE);
             });
 
-            // Llama a asignarTecnicoManual(Ticket, String) que existe en Servidor.java
             botonAsignar.addActionListener(e -> {
                 Ticket ticket = obtenerSeleccionado();
                 if (ticket == null) return;
@@ -425,7 +395,6 @@ public class ServidorSwing {
                     return;
                 }
 
-                // getNombre() está en Tecnico.java (ver archivo adjunto)
                 String[] nombresTecnicos = listaTecnicos.stream()
                     .map(Tecnico::getNombre)
                     .toArray(String[]::new);
@@ -437,11 +406,9 @@ public class ServidorSwing {
 
                 if (tecnicoElegido != null) {
                     servidor.asignarTecnicoManual(ticket, tecnicoElegido);
-                    refrescar();
                 }
             });
 
-            // Llama a resolverTicketManual(Ticket) que existe en Servidor.java
             botonResolver.addActionListener(e -> {
                 Ticket ticket = obtenerSeleccionado();
                 if (ticket == null) return;
@@ -459,7 +426,6 @@ public class ServidorSwing {
 
                 if (confirmacion == JOptionPane.YES_OPTION) {
                     servidor.resolverTicketManual(ticket);
-                    refrescar();
                 }
             });
 
@@ -467,7 +433,6 @@ public class ServidorSwing {
                 Ticket ticket = obtenerSeleccionado();
                 if (ticket == null) return;
 
-                // Usa los getters reales de com.practica.util.Ticket
                 String tecnicoMostrado = ticket.getTecnicoAsignado().isEmpty()
                     ? "—" : ticket.getTecnicoAsignado();
 
@@ -499,7 +464,6 @@ public class ServidorSwing {
             String estadoFiltro    = (String) comboFiltroEstado.getSelectedItem();
             String prioridadFiltro = (String) comboFiltroPrioridad.getSelectedItem();
 
-            // Parte de la lista completa del servidor
             List<Ticket> listaFiltrada = servidor.getListaTickets();
 
             if (!ESTADO_TODOS.equals(estadoFiltro)) {
@@ -538,10 +502,8 @@ public class ServidorSwing {
     static class VentanaPrincipal extends JFrame {
 
         public VentanaPrincipal() {
-            // Servidor ya modificado: constructor vacío, no bloquea
             Servidor servidor = new Servidor();
 
-            // iniciarServidor() bloquea el hilo → corre en hilo demonio para no congelar la UI
             Thread hiloServidor = new Thread(() -> servidor.iniciarServidor());
             hiloServidor.setDaemon(true);
             hiloServidor.start();
@@ -569,9 +531,18 @@ public class ServidorSwing {
             setLocationRelativeTo(null);
             pack();
 
-            // Observer: el Servidor llama a refrescar() solo cuando su estado cambia.
-            // No hay polling; la UI se actualiza únicamente ante eventos reales.
-            servidor.setCallbackCambio(() -> panelAcciones.refrescar());
+            // Timer ligero: compara solo un int cada 200ms.
+            // Solo llama a refrescar() si el contador realmente cambió,
+            // lo que ocurre cuando un Tecnico modifica el estado de un ticket.
+            final int[] ultimaVersion = {servidor.getContadorCambios()};
+            Timer temporizadorLigero = new Timer(200, e -> {
+                int versionActual = servidor.getContadorCambios();
+                if (versionActual != ultimaVersion[0]) {
+                    ultimaVersion[0] = versionActual;
+                    panelAcciones.refrescar();
+                }
+            });
+            temporizadorLigero.start();
 
             addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override

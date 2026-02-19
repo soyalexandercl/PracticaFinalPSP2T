@@ -3,7 +3,6 @@ package com.practica.servidor;
 import com.practica.tecnico.Tecnico;
 import com.practica.util.Ticket;
 
-import javax.swing.SwingUtilities;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -16,19 +15,12 @@ public class Servidor {
     private final Map<Integer, ObjectOutputStream> listaClientes = new HashMap<>();
     private int cantidadTickets = 0;
 
-    private Runnable callbackCambio;
+    // Contador que se incrementa cada vez que el estado del servidor cambia.
+    // La UI lo consulta periódicamente para saber si necesita refrescarse,
+    // sin necesidad de callbacks ni modificaciones complejas.
+    private volatile int contadorCambios = 0;
 
     public Servidor() {
-    }
-
-    public void setCallbackCambio(Runnable callbackCambio) {
-        this.callbackCambio = callbackCambio;
-    }
-
-    private void notificarCambio() {
-        if (callbackCambio != null) {
-            SwingUtilities.invokeLater(callbackCambio);
-        }
     }
 
     public void iniciarServidor() {
@@ -69,13 +61,12 @@ public class Servidor {
                 listaClientes.remove(ticket.getId());
             }
         }
+        contadorCambios++;
         notifyAll();
-        notificarCambio();
     }
 
     public synchronized void registrarTicketDirecto(Ticket ticket) {
         registrarTicket(ticket, null);
-        // notificarCambio() ya se llama dentro de registrarTicket
     }
 
     public synchronized Ticket tomarTicket(String nombreTecnico) throws InterruptedException {
@@ -88,7 +79,7 @@ public class Servidor {
             if (ticket != null) {
                 ticket.setEstado("EN_PROCESO");
                 ticket.setTecnicoAsignado(nombreTecnico);
-                notificarCambio(); // técnico tomó un ticket → avisar a la UI
+                contadorCambios++;
                 return ticket;
             }
             wait();
@@ -118,7 +109,7 @@ public class Servidor {
                 listaClientes.remove(ticket.getId());
             }
         }
-        notificarCambio();
+        contadorCambios++;
     }
 
     public void registrarTecnicoSimulado(int cantidad) {
@@ -128,20 +119,25 @@ public class Servidor {
             this.listaTecnicos.add(tecnico);
             tecnico.start();
         }
-        notificarCambio();
+        contadorCambios++;
     }
 
     public synchronized void asignarTecnicoManual(Ticket ticket, String nombreTecnico) {
         ticket.setEstado("EN_PROCESO");
         ticket.setTecnicoAsignado(nombreTecnico);
+        contadorCambios++;
         notifyAll();
-        notificarCambio();
     }
 
     public synchronized void resolverTicketManual(Ticket ticket) {
         ticket.setEstado("RESUELTO");
         notificarCliente(ticket);
         notifyAll();
+    }
+
+    // Permite a la UI saber si algo cambió desde la última vez que consultó
+    public int getContadorCambios() {
+        return contadorCambios;
     }
 
     public synchronized List<Ticket> getListaTickets() {
